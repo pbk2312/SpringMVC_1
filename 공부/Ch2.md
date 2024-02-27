@@ -47,10 +47,14 @@ request.getScheme()); //http
 request.getRequestURL()); // /request-header
 request.getRequestURI()); //username=hi
 request.isSecure()); //https 사용
+
+
 //Header 모든 정보
    request.getHeaderNames().asIterator()
                 .forEachRemaining(headerName -> System.out.println(headerName + ": "
                         + request.getHeader(headerName)));
+
+
 // Header 편리한 조회
  request.getServerName()); //[Host 편의 조회]
  request.getLocales().asIterator()
@@ -107,3 +111,46 @@ reqeust.getParameterMap(); // 파라미터를 Map으로 조회
  String messageBody = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8); // 스트림 -> 스트링으로 변환
 ```
 
+### JSON 형식으로 파싱
+```ruby
+ ServletInputStream inputStream = request.getInputStream();
+ String messageBody = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8); // 스트림 -> 스트링으로 변환
+ HelloData helloData = objectMapper.readValue(messageBody, HelloData.class);
+ helloData.getUsername();
+ helloData.getAge();
+```
+* JSON 결과를 파싱해서 사용할 수 있는 자바 객체로 변환하려면 Jackson 라이브러리(ObjectMapper)를 사용
+  
+
+## HTTPServletResponse - 기본 사용법
+
+```ruby
+// [status=line]
+   response.setStatus(HttpServletResponse.SC_OK); // http 200 응답코드
+
+
+ // [response-headers]
+   response.setHeader("Content-Type", "text/plain;charset=utf-8")
+   response.setHeader("Cache-Control", "no-cache,no-store,must-revalidate"); // 캐시를 무효화 하겠다
+   response.setHeader("Pragma", "no-cache"); // 과거 버전까지 캐시를 없앰
+   response.setHeader("my-header", "hello");
+
+// [Header 편의 메서드]
+   PrintWriter writer = response.getWriter();
+   writer.println("안녕하세요");
+
+// Content 편의
+   response.setHeader("Content-Type", "text/plain;charset=utf-8");
+   response.setContentType("text/plain");
+   response.setCharacterEncoding("utf-8"); //response.setContentLength(2); //(생략시 자동 생성)
+
+
+// 쿠키
+  Cookie cookie = new Cookie("myCookie", "good");
+  cookie.setMaxAge(600); //600초
+  response.addCookie(cookie);
+
+
+// 리다이렉션
+  response.sendRedirect("/basic/hello-form.html");
+```
