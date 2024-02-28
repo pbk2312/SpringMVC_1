@@ -92,6 +92,121 @@ MVC 패턴2
 ![image (1)](https://github.com/pbk2312/SpringMVC_1/assets/156402683/8b9304b0-8bf4-4129-b4b9-2997a0c45219)
 
 
+## MVC 패턴 적용
+
+```ruby
+ @Override
+ protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String viewPath = "/WEB-INF/views/new-form.jsp";
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);// 여기로 이동할거야
+        dispatcher.forward(request,response);
+    }
+```
+
+* dispatcher.forward(): 다른 서블릿이나 JSP로 이동할 수 있는기능.서버 내부에서 다시 호출이 발생한다.(리다이렉트랑 다름)
+* /WEB-INF:이 경로안에 JSP가 있으면 외부에서 직접 JSP를 호출할 수 없다.우리가 기대하는 것은 항상 컨트롤러를 통해서 JSP를 호출하는 것이다.
+
+## **redirect VS forward**
+리다이렉트는 실제 클라이언트(웹 브라우저)에 응답이 나갔다가,클라이언트가 redirect 경로로 다시 요청한다.
+따라서 클라이언트가 인지할 수 있고,URL 경로도 실제로 변경된다.반면에 포워드는 서버 내부에서 일어나는 호출이기 때문에 클라이언트가 전혀 인지하지 못한다.
+
+new-form.jsp
+
+
+```ruby
+<!-- 상대경로 사용, [현재 URL이 속한 계층 경로 + /save] -->
+<form action="save" method="post">
+    username: <input type="text" name="username"/>
+    age: <input type="text" name="age"/>
+    <button type="submit">전송</button>
+</form>
+```
+여기서 form의 action을 보면 절대 경로(/로 시작)가 아니라 상대경로(/로 시작X)인 것을 확인할 수 있다.이렇게 상대경로를 사용하면 폼 전송시 현재 URL이 속한 계층 경로 + save 가 호출된다
+
+* 현재 계층 경로:/servlet-mvc/members
+* 결과:/servlet-mvc/members/save
+
+
+회원 저장 - 컨트롤러
+
+```ruby
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        System.out.println("MemberSaveServlet.service");
+        String username = request.getParameter("username");
+        int age = Integer.parseInt(request.getParameter("age"));
+
+        Member member = new Member(username, age);
+
+
+        memberRepository.save(member);
+
+        // Model 에 데이터를 보관
+        request.setAttribute("member",member);
+        String viewPath = "/WEB-INF/views/save-result.jsp";
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+        dispatcher.forward(request,response);
+
+    }
+```
+request가 제공하는 setAttribute()를 사용하면 reqeust 객체에 데이터를 보관해서 뷰에 전달 가능
+뷰는 request.getAttribute()로 데이터를 꺼냄
+
+회원 저장 - 뷰
+
+
+```ruby
+<li>
+    id=${member.id}
+</li>
+<li>
+    username=${member.username}
+</li>
+<li>
+    age=${member.age}
+</li>
+```
+
+getAttribute()로 데이터를 꺼낼 수 있지만 JSP에서 제공하는 ${}문법으로 편리하게 조회 가능
+
+*회원 목록-컨트롤러는 생략
+
+
+회원 목록 조회-뷰
+```ruby
+    <tbody>
+    <c:forEach var="item" items="${members}">
+        <tr>
+            <td>${item.id}</td>
+            <td>${item.username}</td>
+            <td>${item.age}</td>
+        </tr>
+    </c:forEach>
+
+    </tbody>
+```
+
+모델에 담아둔 members를 JSP가 제공하는 taglib기능을 사용해서 반복하여 출력
+
+<c:forEach> 기능을 사용하려면 다음과 같이 선언해야한다
+```ruby
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
