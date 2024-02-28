@@ -195,13 +195,40 @@ getAttribute()로 데이터를 꺼낼 수 있지만 JSP에서 제공하는 ${}�
 ```
 
 
+## MVC 패턴의 한계
+
+컨트롤러를 보면 딱봐도 중복이 많고,필요하지 않는 코드들도 많이 보인다
+
+### MVC 컨트롤러의 단점
 
 
+#### **포워드 중복**
+View로 이동하는 코드가 항상 중복 호출된다.
 
+```ruby
+ RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+ dispatcher.forward(request, response);
+```
 
+#### **ViewPath 중복**
 
+```ruby
+String viewPath = "/WEB-INF/views/new-form.jsp";
+```
+* prefix: /WEB-INF/views/
+* suffix: .jsp
 
+#### **사용하지 않는 코드** 
+```ruby
+ HttpServletRequest request, HttpServletResponse response
+```
+#### **공통 처리가 어렵다.**
+기능이 복잡해질 수 록 컨트롤러에서 공통으로 처리해야 하는 부분이 점점 더 많이 증가할 것이다. 단순히 공통 기능을 메서드로 뽑으면 될 것 같지만, 결과적으로 해당 메서드를 항상 호출해야 하고, 실수로 호출하지 않으면 문제가 될 것이 다. 그리고 호출하는 것 자체도 중복이다.
 
+#### **정리하면 공통 처리가 어렵다는 문제가 있다.**
+
+* 이 문제를 해결하려면 컨트롤러 호출 전에 먼저 공통 기능을 처리해야 한다. 소위 **수문장 역할**을 하는 기능이 필요하다. **프론트 컨트롤러(Front Controller) 패턴**을 도입하면 이런 문제를 깔끔하게 해결할 수 있다.(입구를 하나로!)
+스프링 MVC의 핵심도 바로 이 프론트 컨트롤러에 있다.
 
 
 
