@@ -577,3 +577,267 @@ public class ControllerV3HandlerAdapter implements MyHandlerAdapter {
 }
 
 ```
+
+
+``` ruby
+ public boolean supports(Object handler) {
+     return (handler instanceof ControllerV3);
+}
+```
+
+`ControllerV3`을 처리할 수 있는 어댑터를 뜻한다.
+
+```ruby
+ ControllerV3 controller = (ControllerV3) handler;
+ Map<String, String> paramMap = createParamMap(request);
+ ModelView mv = controller.process(paramMap);
+return mv;
+```
+
+handler를 컨트롤러 V3로 변환한 다음에 V3 형식에 맞도록 호출한다.
+`supports()`를 통해 `ControllerV3`만 지원하기 때문에 타입 변환은 실행해도 된다.
+ControllerV3는 ModelView만 반환하므로 그대로 ModelView를 반환하면 된다.
+
+
+FrontControllerServletV5
+```ruby
+@WebServlet(name = "frontControllerServletV5", urlPatterns = "/front-controller/
+v5/*")
+public class FrontControllerServletV5 extends HttpServlet {
+    private final Map<String, Object> handlerMappingMap = new HashMap<>();
+    private final List<MyHandlerAdapter> handlerAdapters = new ArrayList<>();
+    public FrontControllerServletV5() {
+        initHandlerMappingMap();
+        initHandlerAdapters();
+}
+    private void initHandlerMappingMap() {
+        handlerMappingMap.put("/front-controller/v5/v3/members/new-form", new
+MemberFormControllerV3());
+        handlerMappingMap.put("/front-controller/v5/v3/members/save", new
+MemberSaveControllerV3());
+        handlerMappingMap.put("/front-controller/v5/v3/members", new
+MemberListControllerV3());
+    }
+    private void initHandlerAdapters() {
+        handlerAdapters.add(new ControllerV3HandlerAdapter());
+}
+@Override
+     protected void service(HttpServletRequest request, HttpServletResponse
+ response)
+             throws ServletException, IOException {
+         Object handler = getHandler(request);
+         if (handler == null) {
+             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+return; }
+         MyHandlerAdapter adapter = getHandlerAdapter(handler);
+         ModelView mv = adapter.handle(request, response, handler);
+         MyView view = viewResolver(mv.getViewName());
+         view.render(mv.getModel(), request, response);
+     }
+     private Object getHandler(HttpServletRequest request) {
+         String requestURI = request.getRequestURI();
+         return handlerMappingMap.get(requestURI);
+}
+     private MyHandlerAdapter getHandlerAdapter(Object handler) {
+         for (MyHandlerAdapter adapter : handlerAdapters) {
+             if (adapter.supports(handler)) {
+                 return adapter;
+} }
+throw new IllegalArgumentException("handler adapter를 찾을 수 없습니다. handler=" + handler);
+}
+     private MyView viewResolver(String viewName) {
+         return new MyView("/WEB-INF/views/" + viewName + ".jsp");
+} }
+```
+
+
+컨트롤러(Controller) -> 핸들러(Handler)
+이전에는 컨트롤러를 직접 매핑해서 사용했다.그런데 이제는 어댑터를 사용하기 때문에,컨트롤러 뿐만 아니라 어댑터가 지원하기만 하면,어떤 것이라도 URL에 매핑해서 사용할 수 있다.그래서 이름을 컨트롤러에서 더 넓은 범위의 핸들러로 변경했다.
+
+생성자
+```ruby
+public FrontControllerServletV5() {
+ initHandlerMappingMap(); //핸들러 매핑 초기화
+ initHandlerAdapters(); //어댑터 초기화
+}
+
+```
+
+매핑정보
+```ruby
+private final Map<String, Object> handlerMappingMap = new HashMap<>();
+```
+매핑 정보의 값이 `ControllerV3`,`ControllerV4` 같은 인터페이스에서 아무 값이나 받을 수 있는 `Object`로 변경되었다
+
+핸들러 매핑
+```ruby
+ Object handler = getHandler(request)
+private Object getHandler(HttpServletRequest request) {
+     String requestURI = request.getRequestURI();
+     return handlerMappingMap.get(requestURI);
+}
+
+```
+핸들러 매칭 정보인 `handlerMappingMap`에서 URL에 매핑된 핸들러(컨트롤러) 객체를 찾아서 반환한다
+
+핸들러를 처리할 수 있는 어댑터 조회
+```ruby
+MyHandlerAdapter adapter = getHandlerAdapter(handler)
+ for (MyHandlerAdapter adapter : handlerAdapters) {
+     if (adapter.supports(handler)) {
+         return adapter;
+     }
+}
+```
+`handler`를 처리할 수 있는 어댑터를 `adaper.supports(handler)`를 통해서 찾는다
+handler가 `ControllerV3` 인터페이스를 구현했다면,`ControllerV3HandlerAdapter` 객체가 반환된다.
+
+어댑터 호출
+`ModelView mv = adapter.handle(reqeust,response,handler)`
+
+어댑터의 `hadler(reqeust,response,handler)` 메서드를 통해 실제 어댑터가 호출된다
+어댑터는 handler(컨트롤러)를 호출하고 그 결과를 어댑터에 맞추어 반환한다.`ControllerV3HandlerAdapter`의 경우 어댑터 모양과 컨트롤러의 모양이 유사해서 변환 로직이 단순하다.
+
+## 유연한 컨트롤러2-V5
+
+```ruby
+@WebServlet(name = "frontControllerServletV5", urlPatterns = "/front-controller/v5/*")
+public class FrontControllerServletV5 extends HttpServlet {
+
+    private final Map<String, Object> handlerMappingMap = new HashMap<>();
+    private final List<MyHandlerAdapter> handlerAdapters = new ArrayList<>();
+
+
+    public FrontControllerServletV5() {
+        initHandlerMappingMap();
+
+
+        initHandlerAdapters();
+
+    }
+
+
+    private void initHandlerMappingMap() {
+        handlerMappingMap.put("/front-controller/v5/v3/members/new-form", new MemberFormControllerV3());
+        handlerMappingMap.put("/front-controller/v5/v3/members/save", new MemberSaveControllerV3());
+        handlerMappingMap.put("/front-controller/v5/v3/members", new MemberListControllerV3());
+
+        // V4 추가
+        handlerMappingMap.put("/front-controller/v5/v4/members/new-form", new MemberFormControllerV4());
+        handlerMappingMap.put("/front-controller/v5/v4/members/save", new MemberSaveControllerV4());
+        handlerMappingMap.put("/front-controller/v5/v4/members", new MemberListControllerV4());
+    }
+
+    private void initHandlerAdapters() {
+        //MemberFormControllerV3
+        //MemberFormControllerV4
+        handlerAdapters.add(new ControllerV3HandlerAdapter());
+        handlerAdapters.add(new ControllerV4HandlerAdapter());
+
+    }
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        //MemberFormControllerV3
+        //MemberFormControllerV4
+        Object handler = getHandler(request);
+
+        if (handler == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+
+        //ControllerV3HandlerAdapter
+        //ControllerV4HandlerAdapter
+        MyHandlerAdapter adapter = getHandlerAdapter(handler);
+
+        ModelView mv = adapter.handle(request, response, handler);
+
+        String viewName = mv.getViewName();// 논리 이름 Ex) new-form
+
+        // EX) /WEB-INF/views/new-form.jsp
+        MyView view = viewResolver(viewName);
+
+        view.render(mv.getModel(), request, response);
+
+
+    }
+
+    private MyHandlerAdapter getHandlerAdapter(Object handler) {
+        // MemberFormControllerV3
+        // MemberFormControllerV4
+        for (MyHandlerAdapter adapter : handlerAdapters) {
+            if (adapter.supports(handler)) {
+                return adapter;
+            }
+        }
+        throw new IllegalArgumentException("handler adapter 못잦음 handler = " + handler);
+
+    }
+
+
+    private Object getHandler(HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        return handlerMappingMap.get(requestURI);
+    }
+
+    private static MyView viewResolver(String viewName) {
+        MyView view = new MyView("/WEB-INF/views/" + viewName + ".jsp");
+        return view;
+    }
+}
+
+```
+
+ControllerV4HandlerAdapter
+```ruby
+public class ControllerV4HandlerAdapter implements MyHandlerAdapter {
+
+
+    @Override
+    public boolean supports(Object handler) {
+        return (handler instanceof ControllerV4);
+
+    }
+
+    @Override
+    public ModelView handle(HttpServletRequest request, HttpServletResponse response, Object handler) throws ServletException, IOException {
+
+        ControllerV4 controller = (ControllerV4) handler;
+        Map<String, String> paramMap = createParamMap(request);
+        HashMap<String, Object> model = new HashMap<>();
+
+        String viewName = controller.process(paramMap, model);
+
+        ModelView mv = new ModelView(viewName);
+        mv.setModel(model);
+
+
+        return mv;
+
+    }
+
+    private static Map<String, String> createParamMap(HttpServletRequest request) {
+        Map<String, String> paramMap = new HashMap<>();
+        request.getParameterNames().asIterator()
+                .forEachRemaining(paramName -> paramMap.put(paramName, request.getParameter(paramName)));
+        return paramMap;
+    }
+}
+
+```
+
+
+어댑터 변환
+```ruby
+ ModelView mv = new ModelView(viewName);
+        mv.setModel(model);
+
+return mv;
+```
+어댑터에서 이 부분이 단순하지만 중요한 부분이다.
+
+어댑터가 호출하는 `ControllerV4`는 뷰의 이름을 반환한다.그런데 어댑터는 뷰의 이름이 아니라 `ModelView`를 만들어서 반환해야한다.여기서 어댑터가 꼭 필요한 이유가 나온다.
+`ControllerV4`는 뷰의 이름을 반환했지만 ,어댑터는 이것을 ModelView로 만들어서 형식을 맞추어 반환한다.마치 110V 전기 콘센트를 220V 전기 콘센트로 변경하듯이!!
