@@ -433,3 +433,280 @@ return "ok";
      return "ok";
  }
 ```
+
+마치 마법처럼 `HelloData` 객체가 생성되고,요청 파라미터 값도 모두 들어가 있다.
+
+스프링MVCSMS `@ModelAttribute`가 있으면 다음을 실행한다.
+
+
+* `HelloData` 객체를 생성한다.
+* 요청 파라미터 이름으로 `HelloData` 객체의 프로퍼티를 찾는다.그리고 해당 프로퍼티의 setter를 호출해서 파라미터의 값을 입력(바인딩)한다.
+* 예) 파라미터의 이름이 `username`이면 `setUsername()` 메서드를 찾아서 호출하면서 값을 입력한다.
+
+
+ ## HTTP 요청 메시지 - 단순 텍스트
+
+ * HTTP message body에 데이터를 직접 담아서 요청
+   * HTTP API에서 주로 사용,JSON,XML,TEXT
+   * 데이터 형식은 주로 JSON 사용
+   * POST,PUT,PATCH
+  
+ 요청 파라미터와 다르게,HTTP 메시지 바디를 통해 데이터가 직접 넘어오는 경우는 `@RequestParam`,`@ModelAttribute`를 사용 불가(물론 HTML Form형식으로 전달되는 경우는 요청 파라미터로 인정된다.)
+
+**Input, Output 스트림, Reader - requestBodyStringV2**
+
+ ```ruby
+/**
+    * InputStream(Reader): HTTP 요청 메시지 바디의 내용을 직접 조회
+    * OutputStream(Writer): HTTP 응답 메시지의 바디에 직접 결과 출력
+ */
+
+    @ResponseBody
+    @PostMapping("/request-body-json-v2")
+    public String requestBodyJsonV2(@RequestBody String messageBody) throws IOException {
+        log.info("messageBody={}", messageBody);
+
+        HelloData helloData = objectMapper.readValue(messageBody, HelloData.class);
+
+
+        log.info("username={} , age={}", helloData.getUsername(), helloData.getAge());
+
+        return "ok";
+    }
+```
+
+**스프링 MVC는 다음 파라미터를 지원한다.**
+
+* InputStream(Reader): HTTP 요청 메시지 바디의 내용을 직접 조회
+* OutputStream(Writer): HTTP 응답 메시지의 바디에 직접 결과 출력
+
+
+**HttpEntity - requestBodyStringV3**
+
+```ruby
+/**
+* HttpEntity: HTTP header, body 정보를 편리하게 조회
+* - 메시지 바디 정보를 직접 조회(@RequestParam X, @ModelAttribute X)
+* - HttpMessageConverter 사용 -> StringHttpMessageConverter 적용 *
+* 응답에서도 HttpEntity 사용 가능
+* - 메시지 바디 정보 직접 반환(view 조회X)
+* - HttpMessageConverter 사용 -> StringHttpMessageConverter 적용 */
+
+ @PostMapping("/request-body-string-v3")
+ public HttpEntity<String> requestBodyStringV3(HttpEntity<String> httpEntity) {
+     String messageBody = httpEntity.getBody();
+     log.info("messageBody={}", messageBody);
+    return new HttpEntity<>("ok");
+
+ }
+```
+**스프링 MVC는 다음 파라미터를 지원한다.**
+
+* **HttpEntity**: HTTP header, body 정보를 편리하게 조회
+  * 메시지 바디 정보를 직접 조회
+  * 요청 파라미터를 조회하는 기능과 관계 없음 `@RequestParam` X, `@ModelAttribute` X (요청 파라미터는 GET에 쿼리파라미터 오는거 또는 POST Form 전송하는 방식에만)
+* **HttpEntity는 응답에도 사용 가능**
+  * 메시지 바디 정보 직접 반환
+  * 헤더 정보 포함 가능
+  * view 조회X
+
+
+
+`HttpEntity` 를 상속받은 다음 객체들도 같은 기능을 제공한다.
+
+* **RequestEntity**
+  * HttpMethod, url 정보가 추가, 요청에서 사용 
+
+* **ResponseEntity**
+  * HTTP 상태 코드 설정 가능, 응답에서 사용
+ 
+
+
+ ```ruby
+ @ResponseBody
+ @PostMapping("/request-body-string-v4")
+ public String requestBodyStringV4(@RequestBody String messageBody) {
+     log.info("messageBody={}", messageBody);
+     return "ok";
+ }
+```
+
+**@RequestBody**
+
+
+`@RequestBody` 를 사용하면 HTTP 메시지 바디 정보를 편리하게 조회할 수 있다. 참고로 헤더 정보가 필요하다면 `HttpEntity` 를 사용하거나 `@RequestHeader` 를 사용하면 된다.
+이렇게 메시지 바디를 직접 조회하는 기능은 요청 파라미터를 조회하는 `@RequestParam` , `@ModelAttribute` 와 는 전혀 관계가 없다.
+
+
+**요청 파라미터 vs HTTP 메시지 바디**
+
+* 요청 파라미터를 조회하는 기능: `@RequestParam` , `@ModelAttribute`
+* HTTP 메시지 바디를 직접 조회하는 기능: `@RequestBody`
+
+
+
+* **RequestBodyJsonController**
+* **requestBodyJsonV2 - @RequestBody 문자 변환**
+
+생략
+
+**requestBodyJsonV3 - @RequestBody 객체 변환**
+
+```ruby
+
+    @ResponseBody
+    @PostMapping("/request-body-json-v3")
+    public String requestBodyJsonV3(@RequestBody HelloData helloData) throws IOException {
+
+        log.info("username={} , age={}", helloData.getUsername(), helloData.getAge());
+
+        return "ok";
+    }
+
+```
+**@RequestBody 객체 파라미터**
+
+* `@RequestBody HelloData data`
+* `@RequestBody` 에 직접 만든 객체를 지정 가능
+
+
+
+**requestBodyJsonV4 - HttpEntity** - 생략
+
+
+**requestBodyJsonV5**
+
+```ruby
+
+ @ResponseBody
+ @PostMapping("/request-body-json-v5")
+ public HelloData requestBodyJsonV5(@RequestBody HelloData data) {
+     log.info("username={}, age={}", data.getUsername(), data.getAge());
+     return data;
+ }
+
+```
+
+`@ResponseBody`
+응답의 경우에도 `@ResponseBody` 를 사용하면 해당 객체를 HTTP 메시지 바디에 직접 넣어줄 수 있다. 물론 이 경우에도 `HttpEntity` 를 사용해도 된다.
+
+
+* `@RequestBody` 요청
+  * JSON 요청 -> HTTP 메시지 컨버터 -> 객체
+* `@ResponseBody` 응답
+  * 객체 -> HTTP 메시지 컨버터 -> JSON 응답
+ 
+
+
+
+## HTTP 응답 - 정적 리소스,뷰 템플릿
+
+
+**ResponseViewController - 뷰 템플릿을 호출하는 컨트롤러**
+
+```ruby
+
+@Controller
+  public class ResponseViewController {
+     @RequestMapping("/response-view-v1")
+     public ModelAndView responseViewV1() {
+         ModelAndView mav = new ModelAndView("response/hello")
+                 .addObject("data", "hello!");
+         return mav; }
+
+     @RequestMapping("/response-view-v2")
+     public String responseViewV2(Model model) {
+         model.addAttribute("data", "hello!!");
+         return "response/hello";
+     }
+
+     @RequestMapping("/response/hello")
+     public void responseViewV3(Model model) {
+         model.addAttribute("data", "hello!!");
+     }
+}
+```
+
+**String을 반환하는 경우 - View or HTTP 메시지**
+
+`@Responsebody`가 없으면 `response/hello`로 뷰 리졸버가 실행되어서 뷰를 찾고 렌더링 함
+
+
+`@Responsebody`가 있으면 뷰 리졸버 실행 X,HTTP 메시지 바디에 직접 `response/hello`라는 문자 입력
+
+
+예) `templates/response/hello.html`
+
+
+
+**Void**를 반환하는 경우
+
+권장 X
+
+
+## Thymeleaf 스프링 부트 설정
+
+이 설정은 기본값임
+
+
+`application.properties` 
+
+
+` spring.thymeleaf.prefix=classpath:/templates/`
+
+
+` spring.thymeleaf.suffix=.html`
+
+
+
+### HTTP 응답 - HTTP API, 메시지 바디에 직접 입력
+
+### **ResponseBodyController**
+
+
+
+**responseBodyV1**
+
+
+서블릿을 직접 다룰 때 처럼
+HttpServletResponse 객체를 통해서 HTTP 메시지 바디에 직접 `ok` 응답 메시지를 전달한다.
+`response.getWriter().write("ok")`
+
+
+**responseBodyV2**
+
+`ResponseEntity` 엔티티는 `HttpEntity` 를 상속 받았는데, HttpEntity는 HTTP 메시지의 헤더, 바디 정보를 가
+지고 있다. `ResponseEntity` 는 여기에 더해서 HTTP 응답 코드를 설정할 수 있다.
+
+
+`HttpStatus.CREATED` 로 변경하면 201 응답이 나가는 것을 확인할 수 있다.
+
+
+**responseBodyV3**
+
+`@ResponseBody` 를 사용하면 view를 사용하지 않고, HTTP 메시지 컨버터를 통해서 HTTP 메시지를 직접 입력할
+수 있다. `ResponseEntity` 도 동일한 방식으로 동작한다.
+
+
+**responseBodyJsonV1**
+
+`ResponseEntity` 를 반환한다. HTTP 메시지 컨버터를 통해서 JSON 형식으로 변환되어서 반환된다.
+
+
+**responseBodyJsonV2**
+
+`ResponseEntity` 는 HTTP 응답 코드를 설정할 수 있는데, `@ResponseBody` 를 사용하면 이런 것을 설정하기 까
+다롭다.
+`@ResponseStatus(HttpStatus.OK)` 애노테이션을 사용하면 응답 코드도 설정할 수 있다.
+
+## HTTP 메시지 컨버터
+
+
+
+
+
+
+### **@RestController**
+
+`@Controller` 대신에 `@RestController` 애노테이션을 사용하면, 해당 컨트롤러에 모두 `@ResponseBody` 가
+적용되는 효과가 있다. 따라서 뷰 템플릿을 사용하는 것이 아니라, HTTP 메시지 바디에 직접 데이터를 입력한다. 이름 그대로 Rest API(HTTP API)를 만들 때 사용하는 컨트롤러이다.
