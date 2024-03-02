@@ -699,14 +699,78 @@ HttpServletResponse 객체를 통해서 HTTP 메시지 바디에 직접 `ok` 응
 다롭다.
 `@ResponseStatus(HttpStatus.OK)` 애노테이션을 사용하면 응답 코드도 설정할 수 있다.
 
-## HTTP 메시지 컨버터
-
-
-
-
-
 
 ### **@RestController**
 
 `@Controller` 대신에 `@RestController` 애노테이션을 사용하면, 해당 컨트롤러에 모두 `@ResponseBody` 가
 적용되는 효과가 있다. 따라서 뷰 템플릿을 사용하는 것이 아니라, HTTP 메시지 바디에 직접 데이터를 입력한다. 이름 그대로 Rest API(HTTP API)를 만들 때 사용하는 컨트롤러이다.
+
+## HTTP 메시지 컨버터
+
+
+![스크린샷 2024-03-02 오후 11 02 21](https://github.com/pbk2312/pbk2312/assets/156402683/adac5f56-66b9-420a-8773-1142e80d5055)
+
+* `@ResponseBody`를 사용
+  * HTTP BODY에 문자 내용 직접 반환
+  * `viewResolver` 대신에 `HttpMessageConverter`가 동작
+  * 기본 문자 처리 :  `StringHttpMessageConverter`
+  * 기본 객체처리: `MappingJackson2HttpMessageConverter`
+ 
+
+
+**스프링 MVC는 다음의 경우에 HTTP 메시지 컨버터 적용**
+
+* HTTP 요청: `@RequestBody` , `HttpEntity(RequestEntity)`
+* HTTP 응답: `@ResponseBody` , `HttpEntity(ResponseEntity)`
+
+
+HTTP 메시지 컨버터는 HTTP 요청,HTTP 응답 둘다 사용 됌
+* `canRead()` , `canWrite()` : 메시지 컨버터가 해당 클래스, 미디어타입을 지원하는지 체크
+* `read()` , `write()` : 메시지 컨버터를 통해서 메시지를 읽고 쓰는 기능
+
+
+몇가지 주요한 메시지 컨버터를 알아보자
+
+* `ByteArrayHttpMessageConverter` : `byte[]` 데이터를 처리한다.
+  *  클래스 타입: `byte[]` , 미디어타입: `*/*` ,
+  *  요청 예) `@RequestBody byte[] data`
+  *  응답 예) `@ResponseBody return byte[]` 쓰기 미디어타입 `application/octet-stream`
+ 
+* `StringHttpMessageConverter` : `String` 문자로 데이터를 처리한다.
+  * 클래스 타입: `String` , 미디어타입: `*/*`
+  * 요청 예) `@RequestBody String data`
+  * 응답 예) `@ResponseBody return "ok"` 쓰기 미디어타입 `text/plain`
+
+* `MappingJackson2HttpMessageConverter` : application/json
+  * 클래스 타입: 객체 또는 `HashMap` , 미디어타입 `application/json` 관련
+  * 요청 예) `@RequestBody HelloData data`
+  * 응답 예) `@ResponseBody return helloData` 쓰기 미디어타입 `application/json` 관련
+ 
+
+## HTTP 요청 데이터 읽기
+
+* HTTP 요청이 오고, 컨트롤러에서 `@RequestBody` , `HttpEntity` 파라미터를 사용한다.
+* 메시지 컨버터가 메시지를 읽을 수 있는지 확인하기 위해 `canRead()` 를 호출한다.
+  * 대상 클래스 타입을 지원하는가.
+    * 예) `@RequestBody` 의 대상 클래스 ( `byte[]` , `String` , `HelloData` )
+  * HTTP 요청의 Content-Type 미디어 타입을 지원하는가.
+    * 예) `text/plain` , `application/json` , `*/*`
+* `canRead()` 조건을 만족하면 `read()` 를 호출해서 객체 생성하고, 반환한다.
+
+## HTTP 응답 데이터 생성        
+
+* 컨트롤러에서 `@ResponseBody` , `HttpEntity` 로 값이 반환된다.
+* 메시지 컨버터가 메시지를 쓸 수 있는지 확인하기 위해 `canWrite()` 를 호출한다.
+  * 대상 클래스 타입을 지원하는가.
+    * 예) return의 대상 클래스 ( `byte[]` , `String` , `HelloData` )
+  * HTTP 요청의 Accept 미디어 타입을 지원하는가.(더 정확히는 `@RequestMapping` 의 `produces` )
+    * 예) `text/plain` , `application/json` , `*/*`
+* `canWrite()` 조건을 만족하면 `write()` 를 호출해서 HTTP 응답 메시지 바디에 데이터를 생성한다.
+  
+
+
+**RequestMappingHandlerAdapter 동작 방식**
+
+
+![스크린샷 2024-03-02 오후 11 12 40](https://github.com/pbk2312/pbk2312/assets/156402683/e8b45779-2135-4262-9b00-8c11269ee262)
+
